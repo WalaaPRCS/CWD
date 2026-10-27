@@ -10,6 +10,25 @@ CREATE TABLE IF NOT EXISTS form_versions(id UUID PRIMARY KEY DEFAULT gen_random_
 CREATE TABLE IF NOT EXISTS submissions(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),form_id UUID REFERENCES forms(id),form_version INT NOT NULL,beneficiary_id UUID REFERENCES beneficiaries(id),submitted_by UUID REFERENCES users(id),answers JSONB NOT NULL DEFAULT '{}',status TEXT DEFAULT 'submitted',created_at TIMESTAMPTZ DEFAULT now());
 CREATE TABLE IF NOT EXISTS tasks(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),beneficiary_id UUID REFERENCES beneficiaries(id),title TEXT NOT NULL,due_date DATE,status TEXT DEFAULT 'open',assigned_to UUID REFERENCES users(id),metadata JSONB DEFAULT '{}',created_at TIMESTAMPTZ DEFAULT now());
 CREATE TABLE IF NOT EXISTS referrals(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),beneficiary_id UUID REFERENCES beneficiaries(id),submission_id UUID REFERENCES submissions(id),destination TEXT,status TEXT DEFAULT 'open',referred_at DATE DEFAULT CURRENT_DATE,completed_at DATE,notes TEXT DEFAULT '');
+-- Forward-compatible migration for databases created by earlier CWD versions.
+-- CREATE TABLE IF NOT EXISTS does not add new columns to an existing table,
+-- so add every newer forms column before indexes or application queries use it.
+ALTER TABLE forms ADD COLUMN IF NOT EXISTS code TEXT;
+ALTER TABLE forms ADD COLUMN IF NOT EXISTS form_type TEXT;
+ALTER TABLE forms ADD COLUMN IF NOT EXISTS source_system TEXT;
+ALTER TABLE forms ADD COLUMN IF NOT EXISTS source_metadata JSONB;
+
+UPDATE forms SET form_type='service' WHERE form_type IS NULL;
+UPDATE forms SET source_system='native' WHERE source_system IS NULL;
+UPDATE forms SET source_metadata='{}'::jsonb WHERE source_metadata IS NULL;
+
+ALTER TABLE forms ALTER COLUMN form_type SET DEFAULT 'service';
+ALTER TABLE forms ALTER COLUMN source_system SET DEFAULT 'native';
+ALTER TABLE forms ALTER COLUMN source_metadata SET DEFAULT '{}'::jsonb;
+ALTER TABLE forms ALTER COLUMN form_type SET NOT NULL;
+ALTER TABLE forms ALTER COLUMN source_system SET NOT NULL;
+ALTER TABLE forms ALTER COLUMN source_metadata SET NOT NULL;
+
 CREATE TABLE IF NOT EXISTS organizational_units(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),unit_type TEXT NOT NULL,name TEXT NOT NULL,parent_id UUID REFERENCES organizational_units(id),active BOOLEAN DEFAULT true,metadata JSONB DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS task_rules(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),code TEXT UNIQUE NOT NULL,name TEXT NOT NULL,form_code TEXT,rule_json JSONB NOT NULL DEFAULT '{}',active BOOLEAN DEFAULT true);
 CREATE TABLE IF NOT EXISTS indicators(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),code TEXT UNIQUE NOT NULL,name TEXT NOT NULL,definition_json JSONB NOT NULL DEFAULT '{}',active BOOLEAN DEFAULT true);
