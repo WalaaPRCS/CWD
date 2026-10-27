@@ -35,3 +35,26 @@ CREATE TABLE IF NOT EXISTS indicators(id UUID PRIMARY KEY DEFAULT gen_random_uui
 CREATE UNIQUE INDEX IF NOT EXISTS idx_forms_source_code ON forms(source_system,code) WHERE code IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_submissions_beneficiary ON submissions(beneficiary_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_due ON tasks(due_date,status);
+
+CREATE TABLE IF NOT EXISTS volunteers(
+ id UUID PRIMARY KEY DEFAULT gen_random_uuid(), volunteer_no INT UNIQUE, name TEXT NOT NULL,
+ governorate TEXT, area TEXT, latitude NUMERIC, longitude NUMERIC, gps_confirmed BOOLEAN,
+ mobile TEXT, has_smartphone BOOLEAN, facilitator_name TEXT, cbhs_id TEXT UNIQUE,
+ active BOOLEAN DEFAULT true, metadata JSONB NOT NULL DEFAULT '{}', created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS volunteer_activities(
+ volunteer_id UUID REFERENCES volunteers(id) ON DELETE CASCADE, activity_code TEXT NOT NULL,
+ active BOOLEAN DEFAULT true, PRIMARY KEY(volunteer_id,activity_code)
+);
+CREATE TABLE IF NOT EXISTS volunteer_equipment(
+ volunteer_id UUID REFERENCES volunteers(id) ON DELETE CASCADE, equipment_code TEXT NOT NULL,
+ status TEXT, notes TEXT, PRIMARY KEY(volunteer_id,equipment_code)
+);
+CREATE TABLE IF NOT EXISTS training_catalog(
+ code TEXT PRIMARY KEY, name TEXT NOT NULL, sort_order INT DEFAULT 0, active BOOLEAN DEFAULT true
+);
+CREATE TABLE IF NOT EXISTS volunteer_trainings(
+ volunteer_id UUID REFERENCES volunteers(id) ON DELETE CASCADE, training_code TEXT REFERENCES training_catalog(code),
+ status TEXT NOT NULL DEFAULT 'not_trained', trained_at DATE, PRIMARY KEY(volunteer_id,training_code)
+);
+CREATE INDEX IF NOT EXISTS idx_volunteers_governorate ON volunteers(governorate);
