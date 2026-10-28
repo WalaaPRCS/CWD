@@ -72,3 +72,32 @@ CREATE INDEX IF NOT EXISTS idx_workforce_role ON volunteers(program_role);
 
 -- Employee/volunteer numbers may contain slashes or letters (e.g. 300/10).
 ALTER TABLE volunteers ALTER COLUMN volunteer_no TYPE TEXT USING volunteer_no::TEXT;
+
+-- Projects, funded services and M&E indicators
+CREATE TABLE IF NOT EXISTS projects(
+ id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+ code TEXT UNIQUE, name TEXT NOT NULL, donor TEXT,
+ start_date DATE, end_date DATE, status TEXT NOT NULL DEFAULT 'active',
+ governorates JSONB NOT NULL DEFAULT '[]', description TEXT DEFAULT '',
+ active BOOLEAN DEFAULT true, created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS project_services(
+ project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+ service_id UUID REFERENCES services(id) ON DELETE CASCADE,
+ active BOOLEAN DEFAULT true,
+ PRIMARY KEY(project_id,service_id)
+);
+CREATE TABLE IF NOT EXISTS project_indicators(
+ id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+ project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+ code TEXT, name TEXT NOT NULL, description TEXT DEFAULT '',
+ calculation_type TEXT NOT NULL DEFAULT 'unique_beneficiaries',
+ service_id UUID REFERENCES services(id),
+ baseline NUMERIC DEFAULT 0, target NUMERIC,
+ unit TEXT DEFAULT 'مستفيد', disaggregate_by JSONB NOT NULL DEFAULT '[]',
+ active BOOLEAN DEFAULT true, created_at TIMESTAMPTZ DEFAULT now(),
+ UNIQUE(project_id,code)
+);
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS project_id UUID REFERENCES projects(id);
+CREATE INDEX IF NOT EXISTS idx_submissions_project ON submissions(project_id,created_at);
+CREATE INDEX IF NOT EXISTS idx_project_indicators_project ON project_indicators(project_id);
