@@ -58,3 +58,14 @@ CREATE TABLE IF NOT EXISTS volunteer_trainings(
  status TEXT NOT NULL DEFAULT 'not_trained', trained_at DATE, PRIMARY KEY(volunteer_id,training_code)
 );
 CREATE INDEX IF NOT EXISTS idx_volunteers_governorate ON volunteers(governorate);
+
+-- Workforce model: volunteers remain in the same table for backward compatibility.
+ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS engagement_type TEXT NOT NULL DEFAULT 'volunteer';
+ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS program_role TEXT;
+ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS job_title TEXT;
+ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS project_name TEXT;
+ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS contract_start DATE;
+ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS contract_end DATE;
+UPDATE volunteers SET engagement_type='volunteer' WHERE engagement_type IS NULL;
+CREATE INDEX IF NOT EXISTS idx_workforce_engagement ON volunteers(engagement_type,active);
+CREATE INDEX IF NOT EXISTS idx_workforce_role ON volunteers(program_role);
