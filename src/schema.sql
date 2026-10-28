@@ -69,3 +69,6 @@ ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS contract_end DATE;
 UPDATE volunteers SET engagement_type='volunteer' WHERE engagement_type IS NULL;
 CREATE INDEX IF NOT EXISTS idx_workforce_engagement ON volunteers(engagement_type,active);
 CREATE INDEX IF NOT EXISTS idx_workforce_role ON volunteers(program_role);
+
+-- Employee/volunteer numbers may contain slashes or letters (e.g. 300/10).
+ALTER TABLE volunteers ALTER COLUMN volunteer_no TYPE TEXT USING volunteer_no::TEXT;
