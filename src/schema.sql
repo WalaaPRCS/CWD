@@ -101,3 +101,13 @@ CREATE TABLE IF NOT EXISTS project_indicators(
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS project_id UUID REFERENCES projects(id);
 CREATE INDEX IF NOT EXISTS idx_submissions_project ON submissions(project_id,created_at);
 CREATE INDEX IF NOT EXISTS idx_project_indicators_project ON project_indicators(project_id);
+
+-- Operational service delivery fields
+ALTER TABLE services ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';
+ALTER TABLE services ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'community_health';
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS service_id UUID REFERENCES services(id);
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS provider_id UUID REFERENCES volunteers(id);
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS service_date DATE DEFAULT CURRENT_DATE;
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT '';
+CREATE INDEX IF NOT EXISTS idx_submissions_service ON submissions(service_id,service_date);
+CREATE INDEX IF NOT EXISTS idx_submissions_provider ON submissions(provider_id,service_date);
