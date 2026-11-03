@@ -7,7 +7,58 @@ import fs from'fs';import{pool,q}from'./db.js';await pool.query(fs.readFileSync(
 ['friendly-followup','متابعة العيادة الصديقة','friendly_clinic_visit',{source:'CHT tasks.js',trigger:'followup_needed=yes + followup_date'}],
 ['vaccine-child-followup','متابعة الطفل غير المطعم','vaccine_child_followup',{source:'CHT tasks.js',trigger:'active vaccine_child',first_days:14,repeat_days:14,max_events:6}]
 ];for(const r of rules)await q('INSERT INTO task_rules(code,name,form_code,rule_json) VALUES($1,$2,$3,$4::jsonb) ON CONFLICT(code) DO UPDATE SET name=EXCLUDED.name,form_code=EXCLUDED.form_code,rule_json=EXCLUDED.rule_json',[r[0],r[1],r[2],JSON.stringify(r[3])]);
-const legacyFormCodes=['awareness_session','chronic_followup','community_support','consultation','disability_support','distribution','end_support','first_aid','first_aid_followup','friendly_clinic_visit','health_education','injury_support','muac_screening','other_health_service','psychosocial_support','referral','referral_followup','rh_followup','training','vaccination_screening','vaccine_child_followup'];for(const code of legacyFormCodes){const exists=(await q("SELECT id FROM forms WHERE source_system='cht' AND code=$1",[code])).rows[0];if(!exists){const f=(await q("INSERT INTO forms(name,description,status,code,form_type,source_system,source_metadata) VALUES($1,'Imported from previous CHT configuration','published',$1,'service','cht','{\"legacy\":true}'::jsonb) RETURNING id",[code])).rows[0];await q("INSERT INTO form_versions(form_id,version,schema_json) VALUES($1,1,$2::jsonb)",[f.id,JSON.stringify({source:'cht',legacyCode:code,pages:[]})]);}}console.log('Legacy CHT forms ensured:',legacyFormCodes.length);const trainingCatalog=[['first_aid','First Aid'],['bls','Basic Life Support'],['cbhfa','Community-Based Health and First Aid (CBHFA)'],['community_first_responder','Community First Responder Skills'],['chronic_diseases','Chronic Diseases'],['infectious_diseases','Infectious Diseases'],['phie','Public Health in Emergencies (PHiE)'],['c4d','Communication for Development'],['sbcc','Social and Behavior Change Communication'],['pfa','Psychological First Aid (PFA)'],['pm_plus','Problem Management Plus (PM+)'],['sh_plus','Self-Help Plus (SH+)'],['gbv','Gender-Based Violence (GBV)'],['reproductive_health','Reproductive Health'],['vaccination','Vaccination'],['malnutrition','Malnutrition'],['breastfeeding','Breastfeeding'],['cbs','Community-Based Surveillance']];for(let i=0;i<trainingCatalog.length;i++)await q('INSERT INTO training_catalog(code,name,sort_order) VALUES($1,$2,$3) ON CONFLICT(code) DO UPDATE SET name=EXCLUDED.name,sort_order=EXCLUDED.sort_order',[trainingCatalog[i][0],trainingCatalog[i][1],i+1]);
+const legacyFormCodes=['awareness_session','chronic_followup','community_support','consultation','disability_support','distribution','end_support','first_aid','first_aid_followup','friendly_clinic_visit','health_education','injury_support','muac_screening','other_health_service','psychosocial_support','referral','referral_followup','rh_followup','training','vaccination_screening','vaccine_child_followup'];for(const code of legacyFormCodes){const exists=(await q("SELECT id FROM forms WHERE source_system='cht' AND code=$1",[code])).rows[0];if(!exists){const f=(await q("INSERT INTO forms(name,description,status,code,form_type,source_system,source_metadata) VALUES($1,'Imported from previous CHT configuration','published',$1,'service','cht','{\"legacy\":true}'::jsonb) RETURNING id",[code])).rows[0];await q("INSERT INTO form_versions(form_id,version,schema_json) VALUES($1,1,$2::jsonb)",[f.id,JSON.stringify({source:'cht',legacyCode:code,pages:[]})]);}}console.log('Legacy CHT forms ensured:',legacyFormCodes.length);const operationalFormSchemas={
+awareness_session:{title:'جلسة توعية صحية',service:'group-education',pages:[{title:'بيانات الجلسة',questions:[
+{id:'session_date',label:'تاريخ الجلسة',type:'date',required:true},
+{id:'location',label:'مكان تنفيذ الجلسة',type:'text',required:true},
+{id:'topic',label:'موضوع التوعية',type:'text',required:true},
+{id:'target_group',label:'الفئة المستهدفة',type:'single',required:true,options:['أطفال','يافعون','نساء','رجال','حوامل','أهالي ومقدمو رعاية','مجتمع عام']},
+{id:'male_count',label:'عدد المشاركين الذكور',type:'number',required:true},
+{id:'female_count',label:'عدد المشاركات الإناث',type:'number',required:true},
+{id:'notes',label:'ملاحظات',type:'textarea',required:false}]}]},
+referral:{title:'إحالة مستفيد',service:'referral',pages:[{title:'بيانات الإحالة',questions:[
+{id:'referral_date',label:'تاريخ الإحالة',type:'date',required:true},
+{id:'reason',label:'سبب الإحالة',type:'textarea',required:true},
+{id:'destination',label:'جهة الإحالة',type:'text',required:true},
+{id:'urgency',label:'درجة الأولوية',type:'single',required:true,options:['عادية','عاجلة','طارئة']},
+{id:'transport_support',label:'هل يحتاج دعم للوصول إلى جهة الإحالة؟',type:'single',required:true,options:['نعم','لا']},
+{id:'followup_needed',label:'هل تحتاج الإحالة إلى متابعة؟',type:'single',required:true,options:['نعم','لا']},
+{id:'notes',label:'ملاحظات إضافية',type:'textarea',required:false}]}]},
+referral_followup:{title:'متابعة الإحالة',service:'referral',pages:[{title:'نتيجة المتابعة',questions:[
+{id:'followup_date',label:'تاريخ المتابعة',type:'date',required:true},
+{id:'reached_facility',label:'هل وصل المستفيد إلى جهة الإحالة؟',type:'single',required:true,options:['نعم','لا']},
+{id:'service_received',label:'هل تلقى الخدمة المطلوبة؟',type:'single',required:true,options:['نعم','لا','جزئيًا']},
+{id:'barriers',label:'عوائق الوصول أو تلقي الخدمة',type:'textarea',required:false},
+{id:'needs_another_followup',label:'هل يحتاج متابعة أخرى؟',type:'single',required:true,options:['نعم','لا']},
+{id:'notes',label:'ملاحظات المتابعة',type:'textarea',required:false}]}]},
+chronic_followup:{title:'متابعة الأمراض المزمنة',service:'chronic',pages:[{title:'الحالة والمتابعة',questions:[
+{id:'condition',label:'الحالة أو المرض المزمن',type:'text',required:true},
+{id:'medication_available',label:'هل الأدوية متوفرة للمستفيد؟',type:'single',required:true,options:['نعم','لا','جزئيًا']},
+{id:'adherence',label:'الالتزام بالعلاج',type:'single',required:true,options:['منتظم','غير منتظم','لا يتناول العلاج']},
+{id:'warning_signs',label:'هل توجد أعراض أو علامات تستدعي الإحالة؟',type:'single',required:true,options:['نعم','لا']},
+{id:'counselling',label:'الإرشاد أو التثقيف المقدم',type:'textarea',required:false},
+{id:'next_facility_visit_date',label:'موعد الزيارة القادمة للمنشأة الصحية',type:'date',required:false},
+{id:'notes',label:'ملاحظات',type:'textarea',required:false}]}]},
+vaccination_screening:{title:'فحص حالة التطعيم',service:null,pages:[{title:'فحص الطفل',questions:[
+{id:'screening_date',label:'تاريخ الفحص',type:'date',required:true},
+{id:'child_age_months',label:'عمر الطفل بالأشهر',type:'number',required:true},
+{id:'vaccination_card_available',label:'هل بطاقة التطعيم متوفرة؟',type:'single',required:true,options:['نعم','لا']},
+{id:'vaccination_status',label:'حالة التطعيم حسب العمر',type:'single',required:true,options:['مستكمل','غير مستكمل','غير معروف']},
+{id:'missing_vaccines',label:'اللقاحات أو الجرعات غير المستكملة',type:'textarea',required:false},
+{id:'referred_for_vaccination',label:'هل تم توجيه الطفل لخدمة التطعيم؟',type:'single',required:true,options:['نعم','لا']},
+{id:'referral_facility',label:'العيادة / جهة التطعيم',type:'text',required:false},
+{id:'notes',label:'ملاحظات',type:'textarea',required:false}]}]},
+vaccine_child_followup:{title:'متابعة طفل غير مستكمل التطعيم',service:null,pages:[{title:'متابعة الطفل',questions:[
+{id:'followup_date',label:'تاريخ المتابعة',type:'date',required:true},
+{id:'parent_contacted',label:'هل تم التواصل مع ولي الأمر؟',type:'single',required:true,options:['نعم','لا']},
+{id:'attended_vaccination',label:'هل حضر الطفل للحصول على التطعيم؟',type:'single',required:true,options:['نعم','لا']},
+{id:'vaccination_completed',label:'هل استكمل الطفل الجرعات المطلوبة؟',type:'single',required:true,options:['نعم','لا','جزئيًا']},
+{id:'barrier',label:'سبب عدم استكمال التطعيم إن وجد',type:'textarea',required:false},
+{id:'next_followup_needed',label:'هل يحتاج متابعة أخرى؟',type:'single',required:true,options:['نعم','لا']},
+{id:'notes',label:'ملاحظات',type:'textarea',required:false}]}]}
+};
+for(const [code,def] of Object.entries(operationalFormSchemas)){const row=(await q("SELECT f.id,f.name,f.description,f.current_version,v.schema_json FROM forms f JOIN form_versions v ON v.form_id=f.id AND v.version=f.current_version WHERE f.source_system='cht' AND f.code=$1",[code])).rows[0];if(!row)continue;const pages=row.schema_json?.pages||[];const hasRealQuestions=pages.some(p=>(p.questions||[]).some(x=>x.label&&x.label!=='سؤال جديد'));if(hasRealQuestions)continue;let serviceId=null;if(def.service)serviceId=(await q('SELECT id FROM services WHERE code=$1',[def.service])).rows[0]?.id||null;const schema={source:'cht',legacyCode:code,pages:def.pages.map((p,pi)=>({id:code+'_p'+(pi+1),title:p.title,nextRules:[],questions:p.questions}))};await q('UPDATE forms SET name=$2,description=$3,service_id=COALESCE($4,service_id),updated_at=now() WHERE id=$1',[row.id,def.title,'نموذج تشغيلي مبني على متطلبات برنامج الصحة المجتمعية',serviceId]);await q('UPDATE form_versions SET schema_json=$2::jsonb WHERE form_id=$1 AND version=$3',[row.id,JSON.stringify(schema),row.current_version]);}
+console.log('Operational form schemas ensured:',Object.keys(operationalFormSchemas).length);const trainingCatalog=[['first_aid','First Aid'],['bls','Basic Life Support'],['cbhfa','Community-Based Health and First Aid (CBHFA)'],['community_first_responder','Community First Responder Skills'],['chronic_diseases','Chronic Diseases'],['infectious_diseases','Infectious Diseases'],['phie','Public Health in Emergencies (PHiE)'],['c4d','Communication for Development'],['sbcc','Social and Behavior Change Communication'],['pfa','Psychological First Aid (PFA)'],['pm_plus','Problem Management Plus (PM+)'],['sh_plus','Self-Help Plus (SH+)'],['gbv','Gender-Based Violence (GBV)'],['reproductive_health','Reproductive Health'],['vaccination','Vaccination'],['malnutrition','Malnutrition'],['breastfeeding','Breastfeeding'],['cbs','Community-Based Surveillance']];for(let i=0;i<trainingCatalog.length;i++)await q('INSERT INTO training_catalog(code,name,sort_order) VALUES($1,$2,$3) ON CONFLICT(code) DO UPDATE SET name=EXCLUDED.name,sort_order=EXCLUDED.sort_order',[trainingCatalog[i][0],trainingCatalog[i][1],i+1]);
 // Rich, idempotent demo dataset for page-by-page UI review.
 const demoVolunteers=[
 [9001,'أحمد خليل','غزة','الرمال','0599001101','ميساء النجار','CBHS-D001'],
