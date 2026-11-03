@@ -37,7 +37,7 @@ CREATE INDEX IF NOT EXISTS idx_submissions_beneficiary ON submissions(beneficiar
 CREATE INDEX IF NOT EXISTS idx_tasks_due ON tasks(due_date,status);
 
 CREATE TABLE IF NOT EXISTS volunteers(
- id UUID PRIMARY KEY DEFAULT gen_random_uuid(), volunteer_no INT UNIQUE, name TEXT NOT NULL,
+ id UUID PRIMARY KEY DEFAULT gen_random_uuid(), volunteer_no TEXT UNIQUE, name TEXT NOT NULL,
  governorate TEXT, area TEXT, latitude NUMERIC, longitude NUMERIC, gps_confirmed BOOLEAN,
  mobile TEXT, has_smartphone BOOLEAN, facilitator_name TEXT, cbhs_id TEXT UNIQUE,
  active BOOLEAN DEFAULT true, metadata JSONB NOT NULL DEFAULT '{}', created_at TIMESTAMPTZ DEFAULT now()
@@ -70,9 +70,6 @@ UPDATE volunteers SET engagement_type='volunteer' WHERE engagement_type IS NULL;
 CREATE INDEX IF NOT EXISTS idx_workforce_engagement ON volunteers(engagement_type,active);
 CREATE INDEX IF NOT EXISTS idx_workforce_role ON volunteers(program_role);
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS provider_id UUID REFERENCES volunteers(id);
-
--- Employee/volunteer numbers may contain slashes or letters (e.g. 300/10).
-ALTER TABLE volunteers ALTER COLUMN volunteer_no TYPE TEXT USING volunteer_no::TEXT;
 
 -- Projects, funded services and M&E indicators
 CREATE TABLE IF NOT EXISTS projects(
