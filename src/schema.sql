@@ -69,6 +69,7 @@ ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS contract_end DATE;
 UPDATE volunteers SET engagement_type='volunteer' WHERE engagement_type IS NULL;
 CREATE INDEX IF NOT EXISTS idx_workforce_engagement ON volunteers(engagement_type,active);
 CREATE INDEX IF NOT EXISTS idx_workforce_role ON volunteers(program_role);
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS provider_id UUID REFERENCES volunteers(id);
 
 -- Employee/volunteer numbers may contain slashes or letters (e.g. 300/10).
 ALTER TABLE volunteers ALTER COLUMN volunteer_no TYPE TEXT USING volunteer_no::TEXT;
@@ -106,7 +107,6 @@ CREATE INDEX IF NOT EXISTS idx_project_indicators_project ON project_indicators(
 ALTER TABLE services ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';
 ALTER TABLE services ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'community_health';
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS service_id UUID REFERENCES services(id);
-ALTER TABLE submissions ADD COLUMN IF NOT EXISTS provider_id UUID REFERENCES volunteers(id);
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS service_date DATE DEFAULT CURRENT_DATE;
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT '';
 CREATE INDEX IF NOT EXISTS idx_submissions_service ON submissions(service_id,service_date);
